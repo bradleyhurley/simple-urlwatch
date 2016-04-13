@@ -4,76 +4,71 @@ import smtplib
 from difflib import SequenceMatcher
 
 #SMTP Configuration
-smtpSender = """Sender Email Account""" 
+smtp_sender = """Sender Email Account"""
 receivers = ['FirstEmail', 'Second Email']
-smtpHost = """SMTP Host Name"""
-smtpPort = 587
-smtpPassword = 'Sender Email Password'
-smtpSubject = 'Simple-URLWatch has detected a change!'
+smtp_host = """SMTP Host Name"""
+smtp_port = 587
+smtp_password = 'Sender Email Password'
+smtp_subject = 'Simple-URLWatch has detected a change!'
 
 
-#URLs to monitor
+# URLs to monitor
 URLS = {
-    '1':'http://espn.com', 
-    '2':'http://www.reddit.com/new/',
-    '3':'http://www.google.com'
+    '1': 'http://espn.com',
+    '2': 'http://reddit.com/new',
+    '3': 'http://www.google.com'
 }
-
 
 
 THRESHOLD = 1.0  # on a scale of 0 to 1
 
 BASEDIR = os.getcwd()
 HTML_PATH = 'html'
-notifySender = False
+
 
 def main():
+    notify_sender = False
     # create html dir if it does not exist
     if not os.path.exists(os.path.join(BASEDIR, HTML_PATH)):
         try:
             os.makedirs(os.path.join(BASEDIR, HTML_PATH))
         except Exception as e:
-            print("Unable to create html directory at {1}".format(os.path.join(BASEDIR, HTML_PATH)))
+            print("Unable to create html directory at {0}".format(os.path.join(BASEDIR, HTML_PATH)))
             print e
 
-    MESSAGE = 'Subject: %s\n\nThe following URLS have changed \n' %(smtpSubject)
+    message = 'Subject: {0}\n\nThe following URLS have changed \n'.format(smtp_subject)
 
     for urlID, url in URLS.items():
-        LAST_HTML = urlID + '.html'
-        LAST_HTML_PATH = os.path.join(BASEDIR, HTML_PATH, LAST_HTML)
+        last_html = urlID + '.html'
+        last_html_path = os.path.join(BASEDIR, HTML_PATH, last_html)
         
         html = get_html(url)
-        if os.path.exists(LAST_HTML_PATH):
-            last_html = open(LAST_HTML_PATH, 'r').read()
+        if os.path.exists(last_html_path):
+            last_html = open(last_html_path, 'r').read()
             score = get_score(html, last_html)
 
             if score < THRESHOLD:
-                MESSAGE += url +'\n'
-                notifySender = True
-                #print MESSAGE
+                message += url + '\n'
+                notify_sender = True
 
-            write_html(html, LAST_HTML_PATH)
+            write_html(html, last_html_path)
         else:
-            write_html(html, LAST_HTML_PATH)
+            write_html(html, last_html_path)
 
-    if notifySender == True:
-        notify(MESSAGE)
+    if notify_sender is True:
+        send_notification(message)
 
 
-def notify(MESSAGE):
-    print MESSAGE
+def send_notification(message):
+    print message
     try:
-        smtpObj = smtplib.SMTP(smtpHost, smtpPort)
-        smtpObj.login(smtpSender, smtpPassword)
-        smtpObj.sendmail(smtpSender, receivers, MESSAGE)         
+        smtp_obj = smtplib.SMTP(smtp_host, smtp_port)
+        smtp_obj.starttls()
+        smtp_obj.login(smtp_sender, smtp_password)
+        smtp_obj.sendmail(smtp_sender, receivers, message)
         print "Successfully sent email"
-    except SMTPException:
+    except smtplib.SMTPException:
         print "Error: unable to send email"
-
-def get_score(html, last_html):
-    sm = SequenceMatcher(None, html, last_html)
-    score = sm.ratio()
-    return score
 
 
 def get_score(html, last_html):
@@ -85,15 +80,15 @@ def get_score(html, last_html):
 def get_html(url):
     try:
         response = urllib2.urlopen(url)
+        return response.read()
     except Exception as e:
         print 'Unable to open URL: ' + url
         print e
         exit(1)
-    html = response.read()
-    return html
 
-def write_html(html, LAST_HTML_PATH):
-    with open(LAST_HTML_PATH, 'wb') as f:
+
+def write_html(html, last_html_path):
+    with open(last_html_path, 'wb') as f:
         f.write(html)
 
 if __name__ == '__main__':
